@@ -7,6 +7,9 @@ output/
 # manuscript in preparation
 manuscript/
 
+# csv files
+.csv
+
 # History files
 .Rhistory
 .Rapp.history
