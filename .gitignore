@@ -10,6 +10,9 @@ manuscript/
 # docs
 docs/
 
+# SPSS for SK
+SPSS_SK/
+
 # csv files
 .csv
 

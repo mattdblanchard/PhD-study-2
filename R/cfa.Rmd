@@ -1,0 +1,192 @@
+---
+title: "CFA"
+author: "Matthew Blanchard"
+output: pdf_document
+header-includes:
+    - \usepackage{caption}
+    - \captionsetup{labelsep = newline}
+    - \captionsetup{justification = centering, singlelinecheck = false}
+    - \usepackage{pdflscape}
+    - \newcommand{\blandscape}{\begin{landscape}}
+    - \newcommand{\elandscape}{\end{landscape}}
+---
+
+```{r setup, include=FALSE}
+# load packages
+# "GGally", "naniar", "psych", "corrr", "ez"
+packages <- c("tidyverse", "lavaan", "lavaanPlot", "broom", "here", "kableExtra", "knitr")
+lapply(packages, library, character.only = TRUE)
+
+# read data
+d.uid <- read_csv(here("data/190619_uid_data.csv"))
+d.grp <- read_csv(here("data/190619_dyad_data.csv"))
+
+# functions
+clean_table <- function(data, title) {
+  data %>% 
+  kable(booktabs = T, caption = title) %>%
+  kable_styling(font_size = 12, latex_options = "HOLD_position")
+}
+
+# print goodness of fit indices
+gfi <- function(fit_data) {
+  data.frame(fitMeasures(fit_one, fit.measures= c("chisq", "df", "pvalue", "gfi", "tli", 
+                                     "cfi", "rmsea", "rmsea.ci.lower", "rmsea.ci.upper"))) %>%
+    rownames_to_column() %>% 
+    rename(index = rowname, value = fitMeasures.fit_one..fit.measures...c..chisq....df....pvalue...) %>% 
+    mutate(value = round(value, 3)) %>% 
+    clean_table("Goodness of fit indices")
+}
+
+```
+
+
+# Missing value analysis
+``` {r missing, echo=FALSE}
+# plot missing values for each participant for CFA variables
+d.uid %>% 
+  select(uid, adr.ind.acc, crt.ind.acc, rapm.ind.acc, 
+         adr.ind.conf, crt.ind.conf, rapm.ind.conf) %>%
+  pivot_longer(-uid, names_to = "var", values_to = "val") %>% 
+  filter(!is.na(val)) %>% 
+  mutate(n = factor(1)) %>% 
+  ggplot(aes(x = uid, y = var, fill = n)) +
+  geom_tile() +
+  scale_fill_manual(values = "steelblue1") + 
+  labs(title = "uid frequency in each variable") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+```
+
+Data are missing for 5 groups. I will impute missing values for now.
+
+
+``` {r miss, echo=FALSE}
+# print missing values for each participant for CFA variables
+d.uid %>% 
+  select(group, member, adr.ind.acc, crt.ind.acc, rapm.ind.acc, 
+         adr.ind.conf, crt.ind.conf, rapm.ind.conf) %>% 
+  group_by(group, member) %>%
+  summarise(across(everything(), ~sum(is.na(.)))) %>% 
+  group_by(group, member) %>% 
+  summarise(n = sum(adr.ind.acc, crt.ind.acc, rapm.ind.acc, 
+                    adr.ind.conf, crt.ind.conf, rapm.ind.conf)) %>% 
+  filter(n != 0) %>% 
+  arrange(desc(n)) %>% 
+  mutate(member = paste0("member_", member)) %>% 
+  pivot_wider(names_from = member, values_from = n) %>% 
+  clean_table("Number of missing values for each group")
+
+```
+
+# Confirmatory Factor Analysis for 
+## Fit one factor model
+``` {r}
+cfa_one <- paste0('
+                ci  =~ adr.ind.acc + crt.ind.acc + rapm.ind.acc +
+                  adr.ind.conf + crt.ind.conf + rapm.ind.conf')
+```
+
+``` {r, echo=FALSE}
+fit_one <- cfa(cfa_one, data = d.uid, missing = "ML")
+
+# display summary output
+# summary(fit_one, fit.measures=TRUE)
+gfi(fit_one)
+
+# look at the correlation between the residuals (ideally everything should be <= .1)
+# residuals(fit_one, type = "cor") 
+
+```
+
+Model fit is poor: CFI and TLI are low and RMSEA is too high. Let's try a two-factor model with accuracy and confidence.
+
+## Fit two factor model (Accuracy + Confidence)
+``` {r}
+cfa_two <- paste0('
+                accuracy  =~ adr.ind.acc + crt.ind.acc + rapm.ind.acc 
+                
+                confidence =~ adr.ind.conf + crt.ind.conf + rapm.ind.conf
+                     ')
+```
+
+``` {r, echo=FALSE}
+fit_two <- cfa(cfa_two, data = d.uid, missing = "ML")
+
+# display summary output
+# summary(fit_one, fit.measures=TRUE)
+gfi(fit_two)
+
+# look at the correlation between the residuals (ideally everything should be <= .1)
+# residuals(fit_two, type = "cor") 
+
+
+```
+
+``` {r, echo=FALSE}
+# test the difference between the models
+anova(fit_one, fit_two) %>% clean_table("Test model difference")
+
+```
+
+The two-factor model is an improvement on the one-factor model. Although, the model fit is still poor so we may be able to do better by correlating accuracy and confidence within the same test.
+
+
+## Correlate accuracy and confidence within each test
+### Fit one factor model (correlated)
+``` {r}
+cfa_one_corr <- paste0('
+                ci  =~ adr.ind.acc + crt.ind.acc + rapm.ind.acc +
+                        adr.ind.conf + crt.ind.conf + rapm.ind.conf
+                        
+                adr.ind.acc ~~ adr.ind.conf
+                crt.ind.acc ~~ crt.ind.conf
+                rapm.ind.acc ~~ rapm.ind.conf
+                ')
+```
+
+``` {r, echo=FALSE}
+fit_one_corr <- cfa(cfa_one_corr, data = d.uid, missing = "ML")
+
+# display summary output
+# summary(fit_one, fit.measures=TRUE)
+gfi(fit_one_corr)
+
+# look at the correlation between the residuals (ideally everything should be <= .1)
+# residuals(fit_one, type = "cor") 
+
+```
+
+Again, model fit is poor: CFI and TLI are low and RMSEA is too high. Let's try the two-factor model.
+
+## Fit two factor model (correlated)
+``` {r}
+cfa_two_corr <- paste0('
+                accuracy  =~ adr.ind.acc + crt.ind.acc + rapm.ind.acc 
+                confidence =~ adr.ind.conf + crt.ind.conf + rapm.ind.conf
+
+                adr.ind.acc ~~ adr.ind.conf
+                crt.ind.acc ~~ crt.ind.conf
+                rapm.ind.acc ~~ rapm.ind.conf
+                     ')
+```
+
+```{r, echo=FALSE}
+fit_two_corr <- cfa(cfa_two_corr, data = d.uid, missing = "ML")
+
+# display summary output
+# summary(fit_one, fit.measures=TRUE)
+gfi(fit_two_corr)
+
+# look at the correlation between the residuals (ideally everything should be <= .1)
+# residuals(fit_two, type = "cor") 
+
+```
+
+``` {r, echo=FALSE}
+# test the difference between the models
+anova(fit_one_corr, fit_two_corr) %>% clean_table("Test model difference")
+
+```
+
+The two-factor model appears to be a good fit for the data and it is significantly better than the one-factor model. Yay!

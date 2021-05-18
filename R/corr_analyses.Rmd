@@ -1,0 +1,567 @@
+---
+title: "Correlation analysis"
+author: "Matt Blanchard"
+date: "14/05/2019"
+output:
+  html_document: default
+  pdf_document: default
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(cache=TRUE,
+                      echo=FALSE, # set to FALSE to remove the code output
+                      warning=FALSE, 
+                      message=FALSE)
+
+```
+
+
+``` {r read}
+# Load packages and read the cleaned data
+library(tidyverse)
+library(corrplot)
+library(GGally)
+library(naniar)
+library(psych)
+library(broom)
+library(corrr)
+library(ez)
+
+# set the working directory
+# setwd("/Users/blattymanchard/Dropbox (Sydney Uni)/R_projects/S2_CI/")
+
+# read in the individual-level dataset
+d.uid <- read_csv("/Users/blattymanchard/Dropbox (Sydney Uni)/R_projects/S2_CI/data/190513_uid_data.csv")
+
+# read in the dyad-level dataset
+d.grp <- read_csv("/Users/blattymanchard/Dropbox (Sydney Uni)/R_projects/S2_CI/data/190513_dyad_data.csv")
+
+```
+
+## First, let's look at the relationship between accuracy variables
+``` {r accuracy1}
+options(width=250)
+
+# look at correlations
+rs <- d.grp %>% 
+  select(contains("ind.acc"), contains("grp.acc")) %>% 
+  correlate() %>% 
+  focus(adr.ind.acc:rapm.ind.acc) %>% 
+  column_to_rownames(var="rowname") %>% 
+  as.data.frame() %>% 
+  round(2)
+
+rs[rs < .2 & rs > -.2] <- ""
+
+rs
+
+```
+
+Within the same test, we can see that individual and group accuracy (diagonal in correlation matrix) is strongly and positively correlated for all tests.
+
+``` {r accuracy2}
+options(width=250)
+
+# plot correlations
+library(corrplot)
+
+d_cor <- cor(d.grp %>%
+  select(contains("ind.acc"), contains("grp.acc")), use = "pairwise.complete.obs")
+
+cp <- corrplot(d_cor,
+               order = "hclust",
+               method = "square",
+               tl.col = "black")
+
+```
+
+### In the correlation plot two clusters are evident:
+* The cluster in the top left corner is a positive manifold between accuracy varaibles on ADR, CRT, MDMT and RAPM form. Individuals and dyads that perform well on one of these tests tend to perform well on the other tests. 
+* The second cluster in the bottom right corner contains only the general-knowledge test accuracy varaibles. Performance on this test is not related to performance on the other tests.
+
+
+## Next, let's check out the confidence variables
+``` {r confidence1}
+options(width=250)
+
+# look at correlations
+d.grp %>% 
+  select(contains("ind.conf"), contains("grp.conf")) %>% 
+  correlate() %>% 
+  focus(adr.ind.conf:rapm.ind.conf) %>% 
+  column_to_rownames(var="rowname") %>% 
+  as.data.frame() %>% 
+  round(2)
+
+```
+
+Within the same test, we can see that individual and group confidence (diagonal in correlation matrix) is strongly and positively correlated for all tests. 
+
+``` {r confidence2}
+options(width=250)
+
+# plot correlations
+library(corrplot)
+
+d_cor <- cor(d.grp %>%
+  select(contains("ind.conf"), contains("grp.conf")), use = "pairwise.complete.obs")
+
+cp <- corrplot(d_cor,
+               order = "hclust",
+               method = "square",
+               tl.col = "black")
+
+```
+
+There is a positive manifold between all confidence variables. Indicating that higher confidence on one test tends to be associated with higher confidence on the other tests.
+
+## Do accuracy and confidence correlate?
+``` {r acc_conf1}
+options(width=250)
+
+# look at correlations
+rs <- d.grp %>% 
+  select(contains("ind.acc"), contains("grp.acc"), contains("ind.conf"), contains("grp.conf")) %>% 
+  correlate() %>% 
+  focus(adr.ind.acc:rapm.grp.acc) %>% 
+  column_to_rownames(var="rowname") %>% 
+  as.data.frame() %>% 
+  round(2)
+
+rs[rs < .2 & rs > -.2] <- ""
+
+rs
+
+```
+
+Within the same test, we can see that accuracy and confidence (diagonal in correlation matrix) is moderately and positively correlated for all tests except GK. 
+
+``` {r acc-conf2}
+options(width=250)
+
+# plot correlations
+library(corrplot)
+
+d_cor <- cor(d.grp %>%
+  select(contains("ind.acc"), contains("grp.acc"), contains("ind.conf"), contains("grp.conf")), use = "pairwise.complete.obs")
+
+cp <- corrplot(d_cor,
+               order = "hclust",
+               method = "square",
+               tl.col = "black")
+
+```
+
+There is a positive manifold between all accuracy and confidence variables except the general-knowledge test. Indicating that participants with higher confidence tend to have higher accuracy on all tests except GK.
+
+## What about the POST variables?
+``` {r post1}
+options(width=250)
+
+# look at correlations
+rs <- d.grp %>% 
+  select(contains("ind.post"), contains("grp.post")) %>% 
+  correlate() %>% 
+  focus(adr.ind.post:rapm.ind.post) %>% 
+  column_to_rownames(var="rowname") %>% 
+  as.data.frame() %>% 
+  round(2)
+ 
+rs[rs < .2 & rs > -.2] <- ""
+
+rs
+
+```
+
+Within the same test, we can see that individual and group POSTs (diagonal in correlation matrix) are moderately and positively correlated for all tests except MDMT.
+
+``` {r post2}
+options(width=250)
+
+# plot correlations
+library(corrplot)
+
+d_cor <- cor(d.grp %>%
+  select(contains("ind.post"), contains("grp.post")), use = "pairwise.complete.obs")
+
+cp <- corrplot(d_cor,
+               order = "hclust",
+               method = "square",
+               tl.col = "black")
+
+```
+
+With the exception of MDMT, there appears to be a positive manifold between POST variables. Indicating that higher POST scores on one test tend to be associated with higher POST scores on the other tests.
+
+
+## How does POST relate to accuracy and confidence?
+``` {r post3}
+options(width=250)
+
+# look at correlations
+rs <- d.grp %>% 
+  select(contains("ind.acc"), contains("grp.acc"), contains("ind.conf"), contains("grp.conf"), contains("ind.post"), contains("grp.post")) %>% 
+  correlate() %>% 
+  focus(adr.ind.post:rapm.grp.post) %>% 
+  column_to_rownames(var="rowname") %>% 
+  as.data.frame() %>% 
+  round(2)
+ 
+rs[rs < .2 & rs > -.2] <- ""
+
+rs
+
+```
+
+Within the same test, we can see that individual and group POSTs (diagonal in correlation matrix) are moderately and positively correlated with confidence for all tests except GK individual responses. There is no relationship between POST and accuracy.
+
+``` {r post4}
+options(width=250)
+
+# plot correlations
+library(corrplot)
+
+d_cor <- cor(d.grp %>%
+  select(contains("ind.acc"), contains("grp.acc"), contains("ind.conf"), contains("grp.conf"), contains("ind.post"), contains("grp.post")), use = "pairwise.complete.obs")
+
+cp <- corrplot(d_cor,
+               order = "hclust",
+               method = "square",
+               tl.col = "black")
+
+```
+
+A number of clusters have formed:
+* confidence variables (top left)
+* POST variables (along the diagonal below the confidence cluster)
+* a weaker cluster containing confidence and POST varibles
+* GK accuracy (along the diagonal below the POST cluster)
+* accuracy on the other tests (along the diagonal below the GK accuracy cluster)
+
+
+## Let's take a look at the DPA variables
+### Decisiveness
+``` {r decisiveness1}
+options(width=250)
+
+# look at correlations
+rs <- d.grp %>% 
+  select(contains("ind.dec"), contains("grp.dec")) %>% 
+  correlate() %>% 
+  focus(adr.ind.dec:rapm.ind.dec) %>% 
+  column_to_rownames(var="rowname") %>% 
+  as.data.frame() %>% 
+  round(2)
+ 
+rs[rs < .2 & rs > -.2] <- ""
+
+rs
+
+```
+
+Within the same test, we can see that individual and group decisiveness (diagonal in correlation matrix) are moderately and positively correlated for all tests. 
+
+``` {r decisiveness2}
+options(width=250)
+
+# plot correlations
+library(corrplot)
+
+d_cor <- cor(d.grp %>%
+  select(contains("ind.dec"), contains("grp.dec")), use = "pairwise.complete.obs")
+
+cp <- corrplot(d_cor,
+               order = "hclust",
+               method = "square",
+               tl.col = "black")
+
+```
+
+With the exception of MDMT, there appears to be a positive manifold between the decisiveness variables. It is worth noting that RAPM correlates more weakly with GK tests. This pattern indicates that higher decisiveness on one test tends to be associated with higher decisiveness scores on the other tests.
+
+
+### Recklessness
+``` {r recklessness1}
+options(width=250)
+
+# look at correlations
+rs <- d.grp %>% 
+  select(contains("ind.rec"), contains("grp.rec")) %>% 
+  correlate() %>% 
+  focus(adr.ind.rec:rapm.ind.rec) %>% 
+  column_to_rownames(var="rowname") %>% 
+  as.data.frame() %>% 
+  round(2)
+ 
+rs[rs < .2 & rs > -.2] <- ""
+
+rs
+
+```
+
+Within the same test, we can see that individual and group recklessness (diagonal in correlation matrix) are moderately and positively correlated for ADR, CRT and GK but not for MDMT or RAPM. 
+
+``` {r recklessness2}
+options(width=250)
+
+# plot correlations
+library(corrplot)
+
+d_cor <- cor(d.grp %>%
+  select(contains("ind.rec"), contains("grp.rec")), use = "pairwise.complete.obs")
+
+cp <- corrplot(d_cor,
+               order = "hclust",
+               method = "square",
+               tl.col = "black")
+
+```
+
+There is a positive manifold between the recklessness variables for ADR, CRT and GK. This pattern indicates that higher recklessness on one of these tests tends to be associated with higher recklessness scores on the other tests. Recklessness on MDMT and RAPM does not correlate significantly with any of the other tests or each other. 
+
+
+### Optimality
+``` {r optimality1}
+options(width=250)
+
+# look at correlations
+rs <- d.grp %>% 
+  select(contains("ind.optim"), contains("grp.optim")) %>% 
+  correlate() %>% 
+  focus(adr.ind.optim:rapm.ind.optim) %>% 
+  column_to_rownames(var="rowname") %>% 
+  as.data.frame() %>% 
+  round(2)
+ 
+rs[rs < .2 & rs > -.2] <- ""
+
+rs
+
+```
+
+Within the same test, we can see that individual and group optimality (diagonal in correlation matrix) are strongly and positively correlated for all tests.
+
+``` {r optimality2}
+options(width=250)
+
+# plot correlations
+library(corrplot)
+
+d_cor <- cor(d.grp %>%
+  select(contains("ind.optim"), contains("grp.optim")), use = "pairwise.complete.obs")
+
+cp <- corrplot(d_cor,
+               order = "hclust",
+               method = "square",
+               tl.col = "black")
+
+```
+
+There is a positive manifold between the optimality variables. With two caveats: 1) optimality on MDMT does not relate with GK and 2) ADR, CRT, RAPM correltates strongly with each other but weakly (and significantly) with GK. This pattern indicates that higher optimality on one test tends to be associated with higher optimality on the other tests.
+
+
+### Competence
+``` {r competence1}
+options(width=250)
+
+# look at correlations
+rs <- d.grp %>% 
+  select(contains("ind.comp"), contains("grp.comp")) %>% 
+  correlate() %>% 
+  focus(adr.ind.comp:rapm.ind.comp) %>%
+  column_to_rownames(var="rowname") %>% 
+  as.data.frame() %>% 
+  round(2)
+ 
+rs[rs < .2 & rs > -.2] <- ""
+
+rs
+
+```
+
+Within the same test, we can see that individual and group competence (diagonal in correlation matrix) is moderately and positively correlated for all tests.
+
+``` {r competence2}
+options(width=250)
+
+# plot correlations
+library(corrplot)
+
+d_cor <- cor(d.grp %>%
+  select(contains("ind.comp"), contains("grp.comp")), use = "pairwise.complete.obs")
+
+cp <- corrplot(d_cor,
+               order = "hclust",
+               method = "square",
+               tl.col = "black")
+
+```
+
+There is a positive manifold between the optimality variables. With two caveats: 1) optimality on MDMT does not relate with GK and 2) ADR, CRT, RAPM correltates strongly with each other but weakly (and significantly) with GK. This pattern indicates that higher optimality on one test tends to be associated with higher optimality on the other tests.
+
+
+### Hesitancy
+``` {r hesitancy1}
+options(width=250)
+
+# look at correlations
+rs <- d.grp %>% 
+  select(contains("ind.hes"), contains("grp.hes")) %>% 
+  correlate() %>% 
+  focus(adr.ind.hes:rapm.ind.hes) %>%
+  column_to_rownames(var="rowname") %>% 
+  as.data.frame() %>% 
+  round(2)
+ 
+rs[rs < .2 & rs > -.2] <- ""
+
+rs
+
+```
+
+Within the same test, we can see that individual and group hesitancy (diagonal in correlation matrix) is moderately and positively correlated for all tests.
+
+``` {r hesitancy2}
+options(width=250)
+
+# plot correlations
+library(corrplot)
+
+d_cor <- cor(d.grp %>%
+  select(contains("ind.hes"), contains("grp.hes")), use = "pairwise.complete.obs")
+
+cp <- corrplot(d_cor,
+               order = "hclust",
+               method = "square",
+               tl.col = "black")
+
+```
+
+There is a positive manifold between the hesitancy variables with a caveat: hesitancy on MDMT weakly relates to hesitancy on RAPM and CRT but nothing else. This pattern indicates that higher hesitancy on one test tends to be associated with higher hesitancy on the other tests.
+
+
+# Now let's take a look at the relationships between our test variables and demographics
+## Proportion of females and accuracy, confidence and POST
+``` {r female1}
+
+# proportion of females with accuracy, confidence and POST
+# correlation matrix
+d.grp %>%
+  select(prop.female, contains("ind.acc"), contains("grp.acc"), 
+         contains("ind.conf"), contains("grp.conf"), 
+         contains("ind.post"), contains("grp.post")) %>% 
+  correlate() %>% focus(prop.female) %>%
+  arrange(desc(abs(prop.female))) %>% 
+  column_to_rownames(var="rowname") %>% 
+  as.data.frame() %>% 
+  round(2)
+ 
+
+# plot of correlations
+d.grp %>%
+  select(prop.female, contains("ind.acc"), contains("grp.acc"), 
+         contains("ind.conf"), contains("grp.conf"), 
+         contains("ind.post"), contains("grp.post")) %>% 
+  correlate() %>% focus(prop.female) %>% 
+  mutate(rowname = reorder(rowname, prop.female)) %>%
+  ggplot(aes(rowname, prop.female)) +
+    geom_col() + coord_flip()
+
+```
+
+There is a consistent pattern of small to moderate significant negative correlations between the confidence variables and the proportion of females in a group. For CRT, accuracy and POST are also significantly negatively correlated with the proportion of females.
+
+
+``` {r female2}
+# proportion of females with DPA
+# correlation matrix
+d.grp %>%
+  select(prop.female, contains("ind.dec"), contains("grp.dec"), 
+         contains("ind.rec"), contains("grp.rec"), 
+         contains("ind.optim"), contains("grp.optim"),
+         contains("ind.comp"), contains("grp.comp"),
+         contains("ind.hes"), contains("grp.hes")) %>% 
+  correlate() %>% focus(prop.female) %>%
+  mutate(rowname = reorder(rowname, prop.female)) %>%
+  # arrange(desc(prop.female)) %>% 
+  column_to_rownames(var="rowname") %>% 
+  as.data.frame() %>% 
+  round(2)
+ 
+
+# plot of correlations
+d.grp %>%
+  select(prop.female, contains("ind.dec"), contains("grp.dec"), 
+         contains("ind.rec"), contains("grp.rec"), 
+         contains("ind.optim"), contains("grp.optim"),
+         contains("ind.comp"), contains("grp.comp"),
+         contains("ind.hes"), contains("grp.hes")) %>% 
+  correlate() %>% focus(prop.female) %>%
+  mutate(rowname = reorder(rowname, prop.female)) %>%
+  ggplot(aes(rowname, prop.female)) +
+    geom_col() + coord_flip()
+
+```
+
+There is a consistent pattern of small to moderate significant positive correlations between the hesitancy variables and the proportion of females in a group. There is also a consistent pattern of small to moderate significant negative correlations between the decisiveness and optimality variables and the proportion of females. Correlations with recklessness and competence are mixed.
+
+
+``` {r}
+
+
+# team familiarity
+d.grp %>%
+  select(team_familiarity, contains("ind.acc"), contains("grp.acc")) %>% 
+  correlate() %>% focus(team_familiarity) %>%
+  mutate(rowname = reorder(rowname, team_familiarity)) %>%
+  ggplot(aes(rowname, team_familiarity)) +
+    geom_col() + coord_flip()
+
+# age
+d.grp %>%
+  select(age, contains("ind.acc"), contains("grp.acc")) %>% 
+  correlate() %>% focus(age) %>%
+  mutate(rowname = reorder(rowname, age)) %>%
+  ggplot(aes(rowname, age)) +
+    geom_col() + coord_flip()
+
+
+# born in Australia
+d.grp %>%
+  select(aus_born, contains("ind.acc"), contains("grp.acc")) %>% 
+  correlate() %>% focus(aus_born) %>%
+  mutate(rowname = reorder(rowname, aus_born)) %>%
+  ggplot(aes(rowname, aus_born)) +
+    geom_col() + coord_flip()
+
+# Length of time in Australia for those born overseas
+d.grp %>%
+  select(aus_years, contains("ind.acc"), contains("grp.acc")) %>% 
+  correlate() %>% focus(aus_years) %>%
+  mutate(rowname = reorder(rowname, aus_years)) %>%
+  ggplot(aes(rowname, aus_years)) +
+    geom_col() + coord_flip()
+
+
+# Engligh first language
+d.grp %>%
+  select(eng_fl, contains("ind.acc"), contains("grp.acc")) %>% 
+  correlate() %>% focus(eng_fl) %>%
+  mutate(rowname = reorder(rowname, eng_fl)) %>%
+  ggplot(aes(rowname, eng_fl)) +
+    geom_col() + coord_flip()
+
+# Dictionary use for those with English as a 2nd language
+d.grp %>%
+  select(dic_use, contains("ind.acc"), contains("grp.acc")) %>% 
+  correlate() %>% focus(dic_use) %>%
+  mutate(rowname = reorder(rowname, dic_use)) %>%
+  ggplot(aes(rowname, dic_use)) +
+    geom_col() + coord_flip()
+```
+
+
+
+
+

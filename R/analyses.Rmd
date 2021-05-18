@@ -1,0 +1,234 @@
+---
+title: "Analyses"
+author: "Matt Blanchard"
+date: "05/05/2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(cache=TRUE,
+                      echo=FALSE, # set to FALSE to remove the code output
+                      warning=FALSE, 
+                      message=FALSE)
+
+```
+
+## Load packages and read the cleaned data
+``` {r read}
+library(tidyverse)
+library(GGally)
+library(naniar)
+library(corrplot)
+
+# set the working directory
+# setwd("/Users/blattymanchard/Dropbox (Sydney Uni)/R_projects/S2_CI/")
+
+# read in the individual-level dataset
+d.uid <- read_csv("/Users/blattymanchard/Dropbox (Sydney Uni)/R_projects/S2_CI/data/190507_uid_data.csv")
+
+# read in the dyad-level dataset
+d.grp <- read_csv("/Users/blattymanchard/Dropbox (Sydney Uni)/R_projects/S2_CI/data/190507_dyad_data.csv")
+```
+
+## Explore the data
+```{r explore}
+# create df of numeric variable names
+# individual-level data
+numeric_vars_uid <- d.uid %>% 
+  select_if(is.numeric) %>% 
+  select(-member) %>% 
+  names
+
+# dyad-level data
+numeric_vars_grp <- d.grp %>% 
+  select_if(is.numeric) %>% 
+  names
+
+```
+
+
+## Calculate number of missing values for each variable
+All looks ok. There are a few things to note:
+* High number of scores missing for some DPA variables in both the individual- and dyad-level datasets because participants did not engage in some of these pattern of behaviour. For example, recklessness on mdmt and crt are missing because groups obtained 100% accuracy so there was no opportunity to be reckless. 
+* High number of scores missing for adaptability, risk aversion and trust missing because they were added to the protocol part way through testing.
+* Some R2F values missing because some participants skipped this measure to get out on time (~ 12 individuals or ~ 6 groups).
+```{r}
+# individual-level data
+# high number missing for some DPA variables because participants did not engage in this pattern of behaviour (not because data is actually missing)
+# For example, recklessness on mdmt and crt because groups obtained 100% accuracy so there was no opportunity to be reckless
+# adaptability, risk aversion and trust missing because they were added to the protocol part way through testing
+colSums(sapply(d.uid, is.na)) %>% 
+  as.data.frame() %>% 
+  rename(Missing = ".") %>% 
+  tibble::rownames_to_column() %>% 
+  filter(!rowname %in% c("issue_note_2", "issue_note_1", "issue")) %>% 
+  arrange(desc(Missing))
+
+# dyad-level data
+# high number missing for some DPA variables because participants did not engage in this pattern of behaviour (not because data is actually missing)
+# For example, recklessness on mdmt, crt and adr because groups obtained 100% accuracy so there was no opportunity to be reckless
+# adaptability, risk aversion and trust missing because they were added to the protocol part way through testing
+colSums(sapply(d.grp, is.na)) %>% 
+  as.data.frame() %>% 
+  rename(Missing = ".") %>% 
+  tibble::rownames_to_column() %>% 
+  filter(!rowname %in% c("issue_note_2", "issue_note_1", "issue")) %>% 
+  arrange(desc(Missing))
+```
+
+
+## Plot the number of missing values for each variable
+```{r}
+gg_miss_var(d.uid %>% select(-issue_note_2, -issue_note_1, -issue))
+gg_miss_var(d.grp %>% select(-issue_note_2, -issue_note_1, -issue))
+```
+
+## An alternative method of plotting missing values
+```{r}
+gg_miss_upset(d.uid %>% select(-issue_note_2, -issue_note_1, -issue))
+gg_miss_upset(d.grp %>% select(-issue_note_2, -issue_note_1, -issue))
+```
+
+## Create separate distribution and scatter plots for each variable using GGally package
+# Raven's Advanced Progressive Matrices
+Individual accuracy is (1) positively correlated with confidence, decisiveness, competence and optimality; and (2) negatively correlated with hesitency
+Individual confidence is (1) positively correlated with decisiveness, recklessness, competence and optimality; and (2) negatively correlated with hesitency
+The same relationships occurred for groups. Although, the relationship between confidence and recklessness was weaker
+
+Competence and optimality were perfectly correlated (+1) - check calculation
+
+# Medical Decision Making Test
+Individual accuracy is (1) positively correlated with confidence, decisiveness, recklessness, competence and optimality; and (2) negatively correlated with hesitency
+Individual confidence is (1) positively correlated with decisiveness, recklessness, competence and optimality; and (2) negatively correlated with hesitency
+The same relationships occurred for groups with the exception that accuracy did not relate to recklessness. Also, the relationship between confidence and recklessness was weaker
+
+# General Knowledge Test
+Individual accuracy is positively correlated with competence and optimality only
+Individual confidence is (1) positively correlated with decisiveness, recklessness, competence and optimality; and (2) negatively correlated with hesitency
+The same relationships occurred for groups
+
+# Cognitive Reflection Test
+Individual accuracy is (1) positively correlated with confidence, decisiveness, competence and optimality; and (2) negatively correlated with hesitency
+Individual confidence is (1) positively correlated with decisiveness, recklessness, competence and optimality; and (2) negatively correlated with hesitency
+The same relationships occurred for groups
+
+# Applying Decision Rules
+Individual accuracy is (1) positively correlated with confidence, decisiveness, competence and optimality; and (2) negatively correlated with hesitency
+Individual confidence is (1) positively correlated with decisiveness, recklessness, competence and optimality; and (2) negatively correlated with hesitency
+The same relationships occurred for groups with the exception that accuracy also related to recklessness
+
+# Resistance to Framing
+Individuals that had a larger framing effect also had a larger framing effect when working in a group
+
+# Accuracy
+For both individuals and groups there is a positive manifold for accuracy across tests except GK doesn't correlate with the others
+
+# Confidence
+For both individuals and groups there was a positive manifold for confidence across tests
+
+# Decisiveness
+For individuals and groups, there is a positive manifold for decisiveness across tests except MDMT doesn't correlate with the others. 
+
+# Recklessness
+For individuals, recklessness only positively correlates between GK, CRT and ADR. No relationship for RAPM and MDMT with any of the tests.
+For groups, recklessness only positively correlates between RAPM, GK, CRT and ADR. No relationship for MDMT with any of the tests.
+
+# Competence
+For individuals and groups, there was a positive manifold for Competence across tests with the exception of GK (no relationship)
+
+# Hesitancy
+For individuals and groups, there was a positive manifold for Hesitancy across tests with the exception of MDMT (no relationship)
+
+# Other variables
+Trust positively correlates with adaptability (both sub-factors and the global factor)
+The cognitive facet of Adaptability positively correlates with Agreeableness and Intellect
+The affective facet of Adaptability positively correlates with Extraversion and negatively with Neuroticism
+
+```{r}
+# library(GGally)
+
+# RAPM
+plot <- d.uid %>% 
+ggpairs(columns = numeric_vars_uid[c(1:14)],
+        title = "RAPM")
+
+ggsave(plot, "/Users/blattymanchard/Dropbox (Sydney Uni)/R_projects/S2_CI/output/ggpairs_rapm.png", width = 16, height = 10)
+
+# MDMT
+d %>% 
+ggpairs(columns = numeric_vars_uid[c(15:28)],
+        title = "MDMT",
+        ggsave("/Users/blattymanchard/Dropbox (Sydney Uni)/R_projects/S2_CI/output/ggpairs_mdmt.png", width = 16, height = 10))
+
+# GK
+d %>% 
+ggpairs(columns = numeric_vars_uid[c(29, 31, 33, 35, 37, 39, 41, 30, 32, 34, 36, 38, 40, 42)],
+        title = "GK",
+        ggsave("/Users/blattymanchard/Dropbox (Sydney Uni)/R_projects/S2_CI/output/ggpairs_gk.png", width = 16 + 2), height = 10))
+
+# ADR
+d %>% 
+ggpairs(columns = numeric_vars_uid[c(57, 59, 61, 63, 65, 67, 69, 58, 60, 62, 64, 66, 68, 70)],
+        title = "ADR")
+
+# R2F
+d %>% 
+  ggpairs(columns = numeric_vars_uid[c(71:72)],
+          title = "R2F")
+
+# Accuracy
+d %>% 
+  ggpairs(columns = numeric_vars_uid[c(1, 15, 29, 43, 57, 8, 22, 30, 44, 58)],
+          title = "Accuracy")
+
+# Confidence
+d %>% 
+  ggpairs(columns = numeric_vars_uid[c(2, 16, 31, 45, 59, 9, 23, 32, 46, 60)],
+          title = "Confidence")
+
+# Decisiveness
+d %>% 
+  ggpairs(columns = numeric_vars_uid[c(3, 17, 33, 47, 61, 10, 24, 34, 48, 62)],
+          title = "Decisiveness")
+
+# Recklessness
+d %>% 
+  ggpairs(columns = numeric_vars_uid[c(4, 18, 35, 49, 63, 11, 25, 36, 50, 64)],
+          title = "Recklessness")
+
+# Competence
+d %>% 
+  ggpairs(columns = numeric_vars_uid[c(5, 19, 37, 51, 65, 12, 26, 38, 52, 66)],
+          title = "Competence")
+
+# Optimality
+# d %>% 
+#   ggpairs(columns = numeric_vars[c(6, 20, 39, 53, 67, 13, 27, 40, 54, 68)],
+#           title = "Optimality")
+
+# Hesitancy
+d %>% 
+  ggpairs(columns = numeric_vars[c(7, 21, 41, 55, 69, 14, 28, 42, 56, 70)],
+          title = "Hesitancy")
+
+# Other variables
+d %>% 
+  ggpairs(columns = numeric_vars[c(73:86)],
+          title = "Other variables")
+```
+
+
+## Let's plot the correlations between all of the variables in the dataset
+```{r}
+d_cor <- cor(d[,numeric_vars],
+                      use = "pairwise.complete.obs")
+
+cp <- corrplot(d_cor,
+               order = "hclust",
+               method = "square",
+               tl.col = "black")
+```
+
+
+
+
